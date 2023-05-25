@@ -2,13 +2,13 @@ package routes
 
 import "github.com/gorilla/mux"
 
-var R mux.Router
+func TimeRouter() *mux.Router {
+	r := mux.NewRouter()
 
-func TimeRouter() {
-	freeTime()
-	holiday()
-	lieu()
-	sick()
+	freeTime(r)
+	holiday(r)
+	lieu(r)
+	sick(r)
 
-	return
+	return r
 }

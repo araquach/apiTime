@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/araquach/apiAuth/routes"
-	apiTime "github.com/araquach/apiTime/routes"
+	"github.com/araquach/apiTime/routes"
 	db "github.com/araquach/dbService"
+	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"os"
@@ -19,9 +19,12 @@ func main() {
 	}
 
 	// Load API Routes
-	apiTime.TimeRouter()
+	timeRouter := routes.TimeRouter()
+	mainRouter := mux.NewRouter()
+
+	mainRouter.PathPrefix("/api/time").Handler(timeRouter)
 
 	log.Printf("Starting server on %s", port)
 
-	http.ListenAndServe(":"+port, &routes.R)
+	http.ListenAndServe(":"+port, mainRouter)
 }

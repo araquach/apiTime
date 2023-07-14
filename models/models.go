@@ -21,7 +21,6 @@ type Holiday struct {
 	StaffId         int        `json:"staff_id"`
 	HoursRequested  float32    `json:"hours_requested"`
 	Description     string     `json:"description"`
-	Prebooked       bool       `json:"prebooked"`
 	RequestDateFrom time.Time  `json:"request_date_from"`
 	RequestDateTo   time.Time  `json:"request_date_to"`
 	Saturday        float32    `json:"saturday"`

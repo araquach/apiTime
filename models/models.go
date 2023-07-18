@@ -7,7 +7,7 @@ import (
 
 type Time struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
-	StaffId     uint           `json:"staff_id"`
+	StaffId     int            `json:"staff_id"`
 	HolidayEnt  float32        `json:"holiday_ent"`
 	Holidays    float32        `json:"holidays"`
 	LieHours    float32        `json:"lie_hours"`

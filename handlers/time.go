@@ -9,13 +9,13 @@ import (
 	"net/http"
 )
 
-func ApiTimeInfo(w http.ResponseWriter, r *http.Request) {
+func ApiTimeDetails(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["staff_id"]
 
 	var timeInfo models.Time
 
-	db.DB.Where("staff_id", param).Find(timeInfo)
+	db.DB.Where("staff_id", param).First(&timeInfo)
 
 	json, err := json.Marshal(timeInfo)
 	if err != nil {

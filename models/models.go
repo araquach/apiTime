@@ -1,8 +1,21 @@
 package models
 
 import (
+	"gorm.io/datatypes"
 	"time"
 )
+
+type Time struct {
+	ID          uint           `json:"id" gorm:"primaryKey"`
+	StaffId     uint           `json:"staff_id"`
+	HolidayEnt  float32        `json:"holiday_ent"`
+	Holidays    float32        `json:"holidays"`
+	LieHours    float32        `json:"lie_hours"`
+	FreeTimeEnt float32        `json:"free_time_ent"`
+	FreeTime    float32        `json:"free_time"`
+	SickDays    float32        `json:"sick_days"`
+	Schedule    datatypes.JSON `json:"schedule"`
+}
 
 type SHCats struct {
 	ID      uint   `json:"id" gorm:"primaryKey"`

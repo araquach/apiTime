@@ -6,6 +6,12 @@ require (
 	github.com/araquach/apiAuth v0.0.1
 	github.com/araquach/dbService v0.0.1
 	github.com/jinzhu/now v1.1.5
+	gorm.io/datatypes v1.2.0
+)
+
+require (
+	github.com/go-sql-driver/mysql v1.7.0 // indirect
+	gorm.io/driver/mysql v1.4.7 // indirect
 )
 
 require (

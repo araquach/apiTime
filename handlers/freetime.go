@@ -48,15 +48,42 @@ func ApiFreeTime(w http.ResponseWriter, r *http.Request) {
 func ApiFreeTimeCreate(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
-	var data models.FreeTime
-	err := decoder.Decode(&data)
+	var freeTime models.FreeTime
+	var time models.Time
+
+	err := decoder.Decode(&freeTime)
 	if err != nil {
 		panic(err)
 	}
 
-	db.DB.Create(&data)
-	if err != nil {
-		log.Fatal(err)
+	tx := db.DB.Begin()
+
+	res := tx.First(&time)
+	if res.Error != nil {
+		// Handle error, e.g., log it and return
+		log.Printf("Error finding time details: %v", res.Error)
+		tx.Rollback()
+		return
 	}
+
+	time.FreeTime += freeTime.FreeTimeHours
+
+	res = tx.Model(&time).UpdateColumn("free_time", time.FreeTime)
+	if res.Error != nil {
+		// Handle error, e.g., log it and return
+		log.Printf("Error updating free time in times: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	res = tx.Create(&freeTime)
+	if res.Error != nil {
+		log.Printf("Error  creating free time: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	tx.Commit()
+
 	return
 }

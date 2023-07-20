@@ -48,15 +48,46 @@ func ApiHoliday(w http.ResponseWriter, r *http.Request) {
 func ApiHolidayCreate(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
-	var data models.Holiday
-	err := decoder.Decode(&data)
+	var holiday models.Holiday
+	var time models.Time
+
+	err := decoder.Decode(&holiday)
 	if err != nil {
 		panic(err)
 	}
 
-	db.DB.Create(&data)
-	if err != nil {
-		log.Fatal(err)
+	// Start a transaction
+	tx := db.DB.Begin()
+
+	res := tx.First(&time)
+	if res.Error != nil {
+		// Handle error, e.g., log it and return
+		log.Printf("Error finding booking: %v", res.Error)
+		tx.Rollback()
+		return
 	}
+
+	time.Saturdays -= holiday.Saturday
+	time.Holidays += holiday.HoursRequested
+
+	res = tx.Model(&time).UpdateColumns(map[string]interface{}{"saturdays": time.Saturdays, "holidays": time.Holidays})
+
+	if res.Error != nil {
+		// Handle error, e.g., log it and return
+		log.Printf("Error updating booking: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	res = tx.Create(&holiday)
+	if res.Error != nil {
+		log.Printf("Error creating holiday: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	// If everything went well, commit the transaction
+	tx.Commit()
+
 	return
 }

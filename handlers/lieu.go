@@ -48,15 +48,42 @@ func ApiLieuHour(w http.ResponseWriter, r *http.Request) {
 func ApiLieuHourCreate(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
-	var data models.Lieu
-	err := decoder.Decode(&data)
+	var lieu models.Lieu
+	var time models.Time
+
+	err := decoder.Decode(&lieu)
 	if err != nil {
 		panic(err)
 	}
 
-	db.DB.Create(&data)
-	if err != nil {
-		log.Fatal(err)
+	tx := db.DB.Begin()
+
+	res := tx.First(&time)
+	if res.Error != nil {
+		// Handle error, e.g., log it and return
+		log.Printf("Error finding time details: %v", res.Error)
+		tx.Rollback()
+		return
 	}
+
+	time.LieuHours += lieu.LieuHours
+
+	res = tx.Model(&time).UpdateColumn("lieu_hours", time.LieuHours)
+	if res.Error != nil {
+		// Handle error, e.g., log it and return
+		log.Printf("Error updating lieu hours in times: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	res = tx.Create(&lieu)
+	if res.Error != nil {
+		log.Printf("Error  creating  lieu hour: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	tx.Commit()
+
 	return
 }

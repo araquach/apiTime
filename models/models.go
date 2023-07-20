@@ -10,7 +10,8 @@ type Time struct {
 	StaffId     int            `json:"staff_id"`
 	HolidayEnt  float32        `json:"holiday_ent"`
 	Holidays    float32        `json:"holidays"`
-	LieHours    float32        `json:"lie_hours"`
+	Saturdays   float32        `json:"saturdays"`
+	LieuHours   float32        `json:"lieu_hours"`
 	FreeTimeEnt float32        `json:"free_time_ent"`
 	FreeTime    float32        `json:"free_time"`
 	SickDays    float32        `json:"sick_days"`

@@ -51,7 +51,7 @@ type Sick struct {
 	Description string     `json:"description"`
 	SickFrom    time.Time  `json:"sick_from"`
 	SickTo      time.Time  `json:"sick_to"`
-	Deducted    bool       `json:"deducted"`
+	Deducted    uint       `json:"deducted"`
 }
 
 type Lieu struct {

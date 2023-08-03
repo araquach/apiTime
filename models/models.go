@@ -6,16 +6,21 @@ import (
 )
 
 type Time struct {
-	ID          uint           `json:"id" gorm:"primaryKey"`
-	StaffId     int            `json:"staff_id"`
-	HolidayEnt  float32        `json:"holiday_ent"`
-	Holidays    float32        `json:"holidays"`
-	Saturdays   float32        `json:"saturdays"`
-	LieuHours   float32        `json:"lieu_hours"`
-	FreeTimeEnt float32        `json:"free_time_ent"`
-	FreeTime    float32        `json:"free_time"`
-	SickDays    float32        `json:"sick_days"`
-	Schedule    datatypes.JSON `json:"schedule"`
+	ID               uint           `json:"id" gorm:"primaryKey"`
+	StaffId          int            `json:"staff_id"`
+	HolidayEnt       float32        `json:"holiday_ent"`
+	HolidaysPending  float32        `json:"holidays_pending"`
+	Holidays         float32        `json:"holidays"`
+	Saturdays        float32        `json:"saturdays"`
+	SaturdaysPending float32        `json:"saturdays_pending"`
+	LieuHours        float32        `json:"lieu_hours"`
+	LieuPending      float32        `json:"lieu_hours_pending"`
+	FreeTimeEnt      float32        `json:"free_time_ent"`
+	FreeTimePending  float32        `json:"free_time_pending"`
+	FreeTime         float32        `json:"free_time"`
+	SickDays         float32        `json:"sick_days"`
+	SickDaysPending  float32        `json:"sick_days_pending"`
+	Schedule         datatypes.JSON `json:"schedule"`
 }
 
 type SHCats struct {

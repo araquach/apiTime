@@ -87,3 +87,59 @@ func ApiFreeTimeCreate(w http.ResponseWriter, r *http.Request) {
 
 	return
 }
+
+func ApiFreeTimeUpdate(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var freeTime models.FreeTime
+	var time models.Time
+
+	err := json.NewDecoder(r.Body).Decode(&freeTime)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tx := db.DB.Begin()
+
+	var originalFreeTime models.FreeTime
+	res := tx.First(&originalFreeTime, id)
+	if res.Error != nil {
+		log.Printf("Error finding original free time: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	res = tx.First(&time)
+	if res.Error != nil {
+		log.Printf("Error finding time entry: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	freeTimeDiff := freeTime.FreeTimeHours - originalFreeTime.FreeTimeHours
+
+	time.FreeTimePending += freeTimeDiff
+
+	res = tx.Model(&time).Update("free_time_pending", time.FreeTimePending)
+	if res.Error != nil {
+		log.Printf("Error updating time details: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	res = tx.Model(&models.FreeTime{}).Where("id = ?", id).Updates(freeTime)
+	if res.Error != nil {
+		log.Printf("Error updating free time: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	tx.Commit()
+
+	json.NewEncoder(w).Encode(freeTime)
+
+}

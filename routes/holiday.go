@@ -14,4 +14,5 @@ func holiday(r *mux.Router) {
 	s.HandleFunc("/holiday/{id}", handlers.ApiHoliday).Methods("GET")
 	//s.HandleFunc("/holiday-create", helpers.TokenVerifyMiddleWare(handlers.ApiHolidayCreate)).Methods("POST")
 	s.HandleFunc("/holiday-create", handlers.ApiHolidayCreate).Methods("POST")
+	s.HandleFunc("/holiday-update/{id}", handlers.ApiHolidayUpdate).Methods("PUT")
 }

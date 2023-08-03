@@ -14,4 +14,5 @@ func freeTime(r *mux.Router) {
 	s.HandleFunc("/free-time/{id}", handlers.ApiFreeTime).Methods("GET")
 	//s.HandleFunc("/free-time-create", helpers.TokenVerifyMiddleWare(handlers.ApiFreeTimeCreate)).Methods("POST")
 	s.HandleFunc("/free-time-create", handlers.ApiFreeTimeCreate).Methods("POST")
+	s.HandleFunc("/free-time-update/{id}", handlers.ApiFreeTimeUpdate).Methods("PUT")
 }

@@ -53,7 +53,8 @@ func ApiFreeTimeCreate(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&freeTime)
 	if err != nil {
-		panic(err)
+		http.Error(w, "Bad request: "+err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	tx := db.DB.Begin()

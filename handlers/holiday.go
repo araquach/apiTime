@@ -20,7 +20,7 @@ func ApiHolidays(w http.ResponseWriter, r *http.Request) {
 	endDate := now.EndOfYear()
 
 	var holidays []models.Holiday
-	db.DB.Where("staff_id", param).Where("request_date_from > ? AND request_date_from < ?", startDate, endDate).Find(&holidays)
+	db.DB.Where("staff_id", param).Where("date_from > ? AND date_from < ?", startDate, endDate).Find(&holidays)
 
 	json, err := json.Marshal(holidays)
 	if err != nil {
@@ -67,18 +67,6 @@ func ApiHolidayCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	time.SaturdaysPending += holiday.Saturday
-	time.HolidaysPending += holiday.HoursRequested
-
-	res = tx.Model(&time).UpdateColumns(map[string]interface{}{"saturdays_pending": time.SaturdaysPending, "holidays_pending": time.HolidaysPending})
-
-	if res.Error != nil {
-		// Handle error, e.g., log it and return
-		log.Printf("Error updating booking: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
 	res = tx.Create(&holiday)
 	if res.Error != nil {
 		log.Printf("Error creating holiday: %v", res.Error)
@@ -86,7 +74,6 @@ func ApiHolidayCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If everything went well, commit the transaction
 	tx.Commit()
 
 	return
@@ -99,18 +86,14 @@ func ApiHolidayUpdate(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	var holiday models.Holiday
-	var time models.Time
-
 	// Decode the incoming holiday JSON body
 	err := json.NewDecoder(r.Body).Decode(&holiday)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	// Start a transaction
 	tx := db.DB.Begin()
-
 	// Find the original holiday
 	var originalHoliday models.Holiday
 	res := tx.First(&originalHoliday, id)
@@ -119,41 +102,56 @@ func ApiHolidayUpdate(w http.ResponseWriter, r *http.Request) {
 		tx.Rollback()
 		return
 	}
-
-	// Find the time entry
-	res = tx.First(&time)
-	if res.Error != nil {
-		log.Printf("Error finding time: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
-	// Calculate the differences
-	saturdaysDiff := holiday.Saturday - originalHoliday.Saturday
-	holidaysDiff := holiday.HoursRequested - originalHoliday.HoursRequested
-
-	// Update the time entry
-	time.SaturdaysPending += saturdaysDiff
-	time.HolidaysPending += holidaysDiff
-
-	res = tx.Model(&time).UpdateColumns(map[string]interface{}{"saturdays_pending": time.SaturdaysPending, "holidays_pending": time.HolidaysPending})
-	if res.Error != nil {
-		log.Printf("Error updating time: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
 	// Update the holiday in the database
-	res = tx.Model(&models.Holiday{}).Where("id = ?", id).Updates(holiday)
+	res = tx.Model(&models.Holiday{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"Requested":   holiday.Requested,
+		"Description": holiday.Description,
+		"DateFrom":    holiday.DateFrom,
+		"DateTo":      holiday.DateTo,
+		"Saturday":    holiday.Saturday,
+	})
 	if res.Error != nil {
 		log.Printf("Error updating holiday: %v", res.Error)
 		tx.Rollback()
 		return
 	}
-
 	// If everything went well, commit the transaction
 	tx.Commit()
-
 	// Return the updated holiday
 	json.NewEncoder(w).Encode(holiday)
+}
+
+func ApiHolidayDash(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["staff_id"]
+
+	var holidayDash models.HolidayDash
+
+	const sql = `SELECT
+    times.holiday_ent AS entitlement,
+    SUM(CASE WHEN holidays.approved = 0 THEN holidays.requested ELSE 0 END) AS total_pending,
+    SUM(CASE WHEN holidays.approved = 1 THEN holidays.requested ELSE 0 END) AS total_booked,
+    (times.holiday_ent - SUM(CASE WHEN holidays.approved = 1 THEN holidays.requested ELSE 0 END)) AS remaining,
+    (times.holiday_ent - SUM(CASE WHEN holidays.requested != 1 THEN holidays.requested ELSE 0 END)) AS remaining_pending,
+    (times.saturday_ent - SUM(CASE WHEN holidays.approved = 0 OR holidays.approved = 1 THEN holidays.saturday ELSE 0 END)) AS sat_pending,
+    (times.saturday_ent - SUM(CASE WHEN holidays.approved = 1 THEN holidays.saturday ELSE 0 END)) AS sat_remaining
+FROM
+    holidays
+        JOIN
+    times ON holidays.staff_id = times.staff_id
+WHERE
+    holidays.staff_id = ? AND
+    EXTRACT(YEAR FROM holidays.date_from) = EXTRACT(YEAR FROM CURRENT_DATE) AND
+    EXTRACT(YEAR FROM holidays.date_to) = EXTRACT(YEAR FROM CURRENT_DATE)
+GROUP BY
+    times.holiday_ent,
+    times.saturday_ent;`
+
+	db.DB.Raw(sql, id).Scan(&holidayDash)
+
+	json, err := json.Marshal(holidayDash)
+	if err != nil {
+		log.Println(err)
+	}
+	w.Write(json)
 }

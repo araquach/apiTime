@@ -7,6 +7,6 @@ import (
 
 func time(r *mux.Router) {
 	s := r.PathPrefix("/api/time").Subrouter()
-
+	s.HandleFunc("/time-details/dash/{staff_id}", handlers.ApiTimeDash).Methods("GET")
 	s.HandleFunc("/time-details/{staff_id}", handlers.ApiTimeDetails).Methods("GET")
 }

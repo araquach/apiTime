@@ -7,7 +7,7 @@ import (
 
 func holiday(r *mux.Router) {
 	s := r.PathPrefix("/api/time").Subrouter()
-
+	s.HandleFunc("/holidays/dash/{staff_id}", handlers.ApiHolidayDash).Methods("GET")
 	//s.HandleFunc("/holidays/{staff_id}", helpers.TokenVerifyMiddleWare(handlers.ApiHolidays)).Methods("GET")
 	s.HandleFunc("/holidays/{staff_id}", handlers.ApiHolidays).Methods("GET")
 	//s.HandleFunc("/holiday/{id}", helpers.TokenVerifyMiddleWare(handlers.ApiHoliday)).Methods("GET")

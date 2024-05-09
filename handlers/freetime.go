@@ -20,7 +20,7 @@ func ApiFreeTimes(w http.ResponseWriter, r *http.Request) {
 	endDate := now.EndOfYear()
 
 	var freeTimes []models.FreeTime
-	db.DB.Where("staff_id", param).Where("date_regarding > ? AND date_regarding < ?", startDate, endDate).Find(&freeTimes)
+	db.DB.Where("staff_id", param).Where("request_date > ? AND request_date < ?", startDate, endDate).Find(&freeTimes)
 
 	json, err := json.Marshal(freeTimes)
 	if err != nil {
@@ -59,20 +59,10 @@ func ApiFreeTimeCreate(w http.ResponseWriter, r *http.Request) {
 
 	tx := db.DB.Begin()
 
-	res := tx.First(&time)
+	res := tx.Where("staff_id", freeTime.StaffId).First(&time)
 	if res.Error != nil {
 		// Handle error, e.g., log it and return
-		log.Printf("Error finding time details: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
-	time.FreeTime += freeTime.FreeTimeHours
-
-	res = tx.Model(&time).UpdateColumn("free_time", time.FreeTime)
-	if res.Error != nil {
-		// Handle error, e.g., log it and return
-		log.Printf("Error updating free time in times: %v", res.Error)
+		log.Printf("Error finding booking: %v", res.Error)
 		tx.Rollback()
 		return
 	}
@@ -96,7 +86,6 @@ func ApiFreeTimeUpdate(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	var freeTime models.FreeTime
-	var time models.Time
 
 	err := json.NewDecoder(r.Body).Decode(&freeTime)
 	if err != nil {
@@ -114,27 +103,13 @@ func ApiFreeTimeUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res = tx.First(&time)
+	res = tx.Model(&models.FreeTime{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"Description": freeTime.Description,
+		"RequestDate": freeTime.RequestDate,
+		"Hours":       freeTime.Hours,
+	})
 	if res.Error != nil {
 		log.Printf("Error finding time entry: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
-	freeTimeDiff := freeTime.FreeTimeHours - originalFreeTime.FreeTimeHours
-
-	time.FreeTimePending += freeTimeDiff
-
-	res = tx.Model(&time).Update("free_time_pending", time.FreeTimePending)
-	if res.Error != nil {
-		log.Printf("Error updating time details: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
-	res = tx.Model(&models.FreeTime{}).Where("id = ?", id).Updates(freeTime)
-	if res.Error != nil {
-		log.Printf("Error updating free time: %v", res.Error)
 		tx.Rollback()
 		return
 	}
@@ -142,5 +117,34 @@ func ApiFreeTimeUpdate(w http.ResponseWriter, r *http.Request) {
 	tx.Commit()
 
 	json.NewEncoder(w).Encode(freeTime)
+}
 
+func ApiFreeTimeDash(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["staff_id"]
+
+	var freeTimeDash models.FreeTimeDash
+
+	const sql = `SELECT
+    times.free_time_ent AS "entitlement",
+    MAX(times.free_time_ent) - SUM(CASE WHEN free_times.approved = 1 THEN free_times.hours ELSE 0 END) AS "remaining",
+    MAX(times.free_time_ent) - SUM(CASE WHEN free_times.approved = 0 THEN free_times.hours ELSE 0 END) AS "remaining_pending",
+    SUM(CASE WHEN free_times.approved = 1 THEN free_times.hours ELSE 0 END) AS "used",
+    SUM(CASE WHEN free_times.approved = 0 THEN free_times.hours ELSE 0 END) AS "pending"
+FROM
+    free_times
+        JOIN
+    times ON free_times.staff_id = times.staff_id
+WHERE
+    free_times.staff_id = ?
+GROUP BY
+    free_times.staff_id, times.free_time_ent`
+
+	db.DB.Raw(sql, id).Scan(&freeTimeDash)
+
+	json, err := json.Marshal(freeTimeDash)
+	if err != nil {
+		log.Println(err)
+	}
+	w.Write(json)
 }

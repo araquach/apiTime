@@ -20,7 +20,7 @@ func ApiLieuHours(w http.ResponseWriter, r *http.Request) {
 	endDate := now.EndOfYear()
 
 	var lieuHours []models.Lieu
-	db.DB.Where("staff_id", param).Where("date_regarding > ? AND date_regarding < ?", startDate, endDate).Find(&lieuHours)
+	db.DB.Where("staff_id", param).Where("request_date > ? AND request_date < ?", startDate, endDate).Find(&lieuHours)
 
 	json, err := json.Marshal(lieuHours)
 	if err != nil {
@@ -53,25 +53,16 @@ func ApiLieuHourCreate(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&lieu)
 	if err != nil {
-		panic(err)
+		http.Error(w, "Bad request: "+err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	tx := db.DB.Begin()
 
-	res := tx.First(&time)
+	res := tx.Where("staff_id", lieu.StaffId).First(&time)
 	if res.Error != nil {
 		// Handle error, e.g., log it and return
 		log.Printf("Error finding time details: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
-	time.LieuHours += lieu.LieuHours
-
-	res = tx.Model(&time).UpdateColumn("lieu_hours", time.LieuHours)
-	if res.Error != nil {
-		// Handle error, e.g., log it and return
-		log.Printf("Error updating lieu hours in times: %v", res.Error)
 		tx.Rollback()
 		return
 	}
@@ -86,4 +77,69 @@ func ApiLieuHourCreate(w http.ResponseWriter, r *http.Request) {
 	tx.Commit()
 
 	return
+}
+
+func ApiLieuHourUpdate(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var lieu models.Lieu
+
+	err := json.NewDecoder(r.Body).Decode(&lieu)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	tx := db.DB.Begin()
+
+	var originalLieu models.Lieu
+	res := tx.First(&originalLieu, id)
+	if res.Error != nil {
+		log.Printf("Error finding original lieu: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	res = tx.Model(&models.Lieu{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"Description": lieu.Description,
+		"RequestDate": lieu.RequestDate,
+		"Hours":       lieu.Hours,
+	})
+	if res.Error != nil {
+		log.Printf("Error updating lieu: %v", res.Error)
+		tx.Rollback()
+		return
+	}
+
+	tx.Commit()
+
+	json.NewEncoder(w).Encode(lieu)
+}
+
+func ApiLieuDash(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["staff_id"]
+
+	var lieuDash models.LieuDash
+
+	const sql = `SELECT
+    SUM(CASE WHEN lieus.approved = 1 THEN lieus.hours ELSE 0 END) AS "used",
+    SUM(CASE WHEN lieus.approved = 0 THEN lieus.hours ELSE 0 END) AS "pending"
+FROM
+    lieus
+WHERE
+    lieus.staff_id = ?
+GROUP BY
+   lieus.staff_id`
+
+	db.DB.Raw(sql, id).Scan(&lieuDash)
+
+	json, err := json.Marshal(lieuDash)
+	if err != nil {
+		log.Println(err)
+	}
+	w.Write(json)
 }

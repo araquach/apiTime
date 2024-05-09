@@ -18,7 +18,7 @@ func ApiSickDays(w http.ResponseWriter, r *http.Request) {
 	endDate := now.EndOfYear()
 
 	var sickDays []models.Sick
-	db.DB.Where("staff_id", param).Where("sick_from > ? AND sick_from < ?", startDate, endDate).Find(&sickDays)
+	db.DB.Where("staff_id", param).Where("date_from > ? AND date_from < ?", startDate, endDate).Find(&sickDays)
 
 	json, err := json.Marshal(sickDays)
 	if err != nil {
@@ -57,4 +57,29 @@ func ApiSickDayCreate(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	return
+}
+
+func ApiSickDash(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["staff_id"]
+
+	var sickDash models.SickDash
+
+	const sql = `SELECT
+    SUM(CASE WHEN sicks.deducted = 1 THEN sicks.hours ELSE 0 END) AS "sick_days",
+    SUM(CASE WHEN sicks.deducted = 0 THEN sicks.hours ELSE 0 END) AS "pending"
+FROM
+    sicks
+WHERE
+    sicks.staff_id = ?
+GROUP BY
+   sicks.staff_id`
+
+	db.DB.Raw(sql, id).Scan(&sickDash)
+
+	json, err := json.Marshal(sickDash)
+	if err != nil {
+		log.Println(err)
+	}
+	w.Write(json)
 }

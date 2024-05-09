@@ -9,6 +9,7 @@ import (
 func sick(r *mux.Router) {
 	s := r.PathPrefix("/api/time").Subrouter()
 
+	s.HandleFunc("/sick-days/dash/{staff_id}", handlers.ApiSickDash).Methods("GET")
 	//s.HandleFunc("/sick-days/{staff_id}", helpers.TokenVerifyMiddleWare(handlers.ApiSickDays)).Methods("GET")
 	s.HandleFunc("/sick-days/{staff_id}", handlers.ApiSickDays).Methods("GET")
 	//s.HandleFunc("/sick-day/{id}", helpers.TokenVerifyMiddleWare(handlers.ApiSickDay)).Methods("GET")

@@ -23,3 +23,20 @@ func ApiTimeDetails(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(json)
 }
+
+func ApiTimeDash(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["staff_id"]
+
+	var timeDash models.TimeDash
+
+	const sql = ``
+
+	db.DB.Raw(sql, id).Scan(&timeDash)
+
+	json, err := json.Marshal(timeDash)
+	if err != nil {
+		log.Println(err)
+	}
+	w.Write(json)
+}

@@ -126,19 +126,18 @@ func ApiFreeTimeDash(w http.ResponseWriter, r *http.Request) {
 	var freeTimeDash models.FreeTimeDash
 
 	const sql = `SELECT
-    times.free_time_ent AS "entitlement",
-    MAX(times.free_time_ent) - SUM(CASE WHEN free_times.approved = 1 THEN free_times.hours ELSE 0 END) AS "remaining",
-    MAX(times.free_time_ent) - SUM(CASE WHEN free_times.approved = 0 THEN free_times.hours ELSE 0 END) AS "remaining_pending",
-    SUM(CASE WHEN free_times.approved = 1 THEN free_times.hours ELSE 0 END) AS "used",
-    SUM(CASE WHEN free_times.approved = 0 THEN free_times.hours ELSE 0 END) AS "pending"
+    MAX(times.free_time_ent) AS "entitlement",
+    COALESCE(MAX(times.free_time_ent) - SUM(CASE WHEN free_times.approved = 1 THEN free_times.hours ELSE 0 END), MAX(times.free_time_ent)) AS "remaining",
+    COALESCE(MAX(times.free_time_ent) - SUM(CASE WHEN free_times.approved = 0 THEN free_times.hours ELSE 0 END), MAX(times.free_time_ent)) AS "remaining_pending",
+    COALESCE(SUM(CASE WHEN free_times.approved = 1 THEN free_times.hours ELSE 0 END), 0) AS "used",
+    COALESCE(SUM(CASE WHEN free_times.approved = 0 THEN free_times.hours ELSE 0 END), 0) AS "pending"
 FROM
-    free_times
-        JOIN
-    times ON free_times.staff_id = times.staff_id
+    times
+        LEFT JOIN free_times ON times.staff_id = free_times.staff_id
 WHERE
-    free_times.staff_id = ?
+    times.staff_id = ?
 GROUP BY
-    free_times.staff_id, times.free_time_ent`
+    times.free_time_ent`
 
 	db.DB.Raw(sql, id).Scan(&freeTimeDash)
 

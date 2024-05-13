@@ -67,7 +67,8 @@ func ApiSickDash(w http.ResponseWriter, r *http.Request) {
 
 	const sql = `SELECT
     SUM(CASE WHEN sicks.deducted = 1 THEN sicks.hours ELSE 0 END) AS "sick_days",
-    SUM(CASE WHEN sicks.deducted = 0 THEN sicks.hours ELSE 0 END) AS "pending"
+    SUM(CASE WHEN sicks.deducted = 0 THEN sicks.hours ELSE 0 END) AS "pending",
+	COUNT(*) AS "instances"
 FROM
     sicks
 WHERE

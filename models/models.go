@@ -73,8 +73,9 @@ type Sick struct {
 }
 
 type SickDash struct {
-	SickDays float32 `json:"sick_days"`
-	Pending  float32 `json:"pending"`
+	SickDays  float32 `json:"sick_days"`
+	Pending   float32 `json:"pending"`
+	Instances int     `json:"instances"`
 }
 
 type Lieu struct {

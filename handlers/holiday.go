@@ -129,23 +129,22 @@ func ApiHolidayDash(w http.ResponseWriter, r *http.Request) {
 
 	const sql = `SELECT
     times.holiday_ent AS entitlement,
-    SUM(CASE WHEN holidays.approved = 0 THEN holidays.requested ELSE 0 END) AS total_pending,
-    SUM(CASE WHEN holidays.approved = 1 THEN holidays.requested ELSE 0 END) AS total_booked,
-    (times.holiday_ent - SUM(CASE WHEN holidays.approved = 1 THEN holidays.requested ELSE 0 END)) AS remaining,
-    (times.holiday_ent - SUM(CASE WHEN holidays.requested != 1 THEN holidays.requested ELSE 0 END)) AS remaining_pending,
-    (times.saturday_ent - SUM(CASE WHEN holidays.approved = 0 OR holidays.approved = 1 THEN holidays.saturday ELSE 0 END)) AS sat_pending,
-    (times.saturday_ent - SUM(CASE WHEN holidays.approved = 1 THEN holidays.saturday ELSE 0 END)) AS sat_remaining
+    COALESCE(SUM(CASE WHEN holidays.approved = 0 THEN holidays.requested ELSE 0 END), 0) AS total_pending,
+    COALESCE(SUM(CASE WHEN holidays.approved = 1 THEN holidays.requested ELSE 0 END), 0) AS total_booked,
+    COALESCE((times.holiday_ent - SUM(CASE WHEN holidays.approved = 1 THEN holidays.requested ELSE 0 END)), times.holiday_ent) AS remaining,
+    COALESCE((times.holiday_ent - SUM(CASE WHEN holidays.requested != 1 THEN holidays.requested ELSE 0 END)), times.holiday_ent) AS remaining_pending,
+    COALESCE((times.saturday_ent - SUM(CASE WHEN holidays.approved = 0 OR holidays.approved = 1 THEN holidays.saturday ELSE 0 END)), times.saturday_ent) AS sat_pending,
+    COALESCE((times.saturday_ent - SUM(CASE WHEN holidays.approved = 1 THEN holidays.saturday ELSE 0 END)), times.saturday_ent) AS sat_remaining
 FROM
-    holidays
-        JOIN
-    times ON holidays.staff_id = times.staff_id
+    times
+        LEFT JOIN holidays ON times.staff_id = holidays.staff_id
 WHERE
-    holidays.staff_id = ? AND
-    EXTRACT(YEAR FROM holidays.date_from) = EXTRACT(YEAR FROM CURRENT_DATE) AND
-    EXTRACT(YEAR FROM holidays.date_to) = EXTRACT(YEAR FROM CURRENT_DATE)
+    times.staff_id = ? AND
+    (holidays.date_from IS NULL OR EXTRACT(YEAR FROM holidays.date_from) = EXTRACT(YEAR FROM CURRENT_DATE)) AND
+    (holidays.date_to IS NULL OR EXTRACT(YEAR FROM holidays.date_to) = EXTRACT(YEAR FROM CURRENT_DATE))
 GROUP BY
     times.holiday_ent,
-    times.saturday_ent;`
+    times.saturday_ent`
 
 	db.DB.Raw(sql, id).Scan(&holidayDash)
 

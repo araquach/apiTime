@@ -35,10 +35,17 @@ func ApiFreeTime(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["id"]
 
-	var freeTime models.FreeTime
-	db.DB.Where("id", param).Find(&freeTime)
+	var freeTimeDetail struct {
+		models.FreeTime
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+	}
 
-	json, err := json.Marshal(freeTime)
+	db.DB.Table("free_times").Select("free_times.*, team_members.first_name, team_members.last_name").
+		Joins("left join team_members on free_times.staff_id = team_members.staff_id").
+		Where("free_times.id = ?", param).First(&freeTimeDetail)
+
+	json, err := json.Marshal(freeTimeDetail)
 	if err != nil {
 		log.Println(err)
 	}
@@ -49,7 +56,6 @@ func ApiFreeTimeCreate(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
 	var freeTime models.FreeTime
-	var time models.Time
 
 	err := decoder.Decode(&freeTime)
 	if err != nil {
@@ -57,25 +63,11 @@ func ApiFreeTimeCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx := db.DB.Begin()
-
-	res := tx.Where("staff_id", freeTime.StaffId).First(&time)
-	if res.Error != nil {
-		// Handle error, e.g., log it and return
-		log.Printf("Error finding booking: %v", res.Error)
-		tx.Rollback()
+	result := db.DB.Create(&freeTime)
+	if result.Error != nil {
+		http.Error(w, "Failed to create record: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	res = tx.Create(&freeTime)
-	if res.Error != nil {
-		log.Printf("Error  creating free time: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
-	tx.Commit()
-
 	return
 }
 

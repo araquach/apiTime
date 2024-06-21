@@ -33,30 +33,21 @@ func ApiSickDay(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["id"]
 
-	var sickDay models.Sick
-	db.DB.Where("id", param).Find(&sickDay)
+	var sickDay struct {
+		models.Sick
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+	}
+
+	db.DB.Table("sicks").Select("sicks.*, team_members.first_name, team_members.last_name").
+		Joins("left join team_members on sicks.staff_id = team_members.staff_id").
+		Where("sicks.id = ?", param).First(&sickDay)
 
 	json, err := json.Marshal(sickDay)
 	if err != nil {
 		log.Println(err)
 	}
 	w.Write(json)
-}
-
-func ApiSickDayCreate(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(r.Body)
-
-	var data models.Sick
-	err := decoder.Decode(&data)
-	if err != nil {
-		panic(err)
-	}
-
-	db.DB.Create(&data)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return
 }
 
 func ApiSickDash(w http.ResponseWriter, r *http.Request) {

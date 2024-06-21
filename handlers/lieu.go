@@ -35,10 +35,17 @@ func ApiLieuHour(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["id"]
 
-	var lieuHour models.Lieu
-	db.DB.Where("id", param).Find(&lieuHour)
+	var lieuHourDetail struct {
+		models.Lieu
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+	}
 
-	json, err := json.Marshal(lieuHour)
+	db.DB.Table("lieus").Select("lieus.*, team_members.first_name, team_members.last_name").
+		Joins("left join team_members on lieus.staff_id = team_members.staff_id").
+		Where("lieus.id = ?", param).First(&lieuHourDetail)
+
+	json, err := json.Marshal(lieuHourDetail)
 	if err != nil {
 		log.Println(err)
 	}
@@ -49,7 +56,6 @@ func ApiLieuHourCreate(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
 	var lieu models.Lieu
-	var time models.Time
 
 	err := decoder.Decode(&lieu)
 	if err != nil {
@@ -57,25 +63,11 @@ func ApiLieuHourCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx := db.DB.Begin()
-
-	res := tx.Where("staff_id", lieu.StaffId).First(&time)
-	if res.Error != nil {
-		// Handle error, e.g., log it and return
-		log.Printf("Error finding time details: %v", res.Error)
-		tx.Rollback()
+	result := db.DB.Create(&lieu)
+	if result.Error != nil {
+		http.Error(w, "Failed to create record: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	res = tx.Create(&lieu)
-	if res.Error != nil {
-		log.Printf("Error  creating  lieu hour: %v", res.Error)
-		tx.Rollback()
-		return
-	}
-
-	tx.Commit()
-
 	return
 }
 

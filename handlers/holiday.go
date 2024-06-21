@@ -35,10 +35,17 @@ func ApiHoliday(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	param := vars["id"]
 
-	var holiday models.Holiday
-	db.DB.Where("id", param).Find(&holiday)
+	var holidayDetail struct {
+		models.Holiday
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+	}
 
-	json, err := json.Marshal(holiday)
+	db.DB.Table("holidays").Select("holidays.*, team_members.first_name, team_members.last_name").
+		Joins("left join team_members on holidays.staff_id = team_members.staff_id").
+		Where("holidays.id = ?", param).First(&holidayDetail)
+
+	json, err := json.Marshal(holidayDetail)
 	if err != nil {
 		log.Println(err)
 	}
@@ -49,33 +56,18 @@ func ApiHolidayCreate(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
 	var holiday models.Holiday
-	var time models.Time
 
 	err := decoder.Decode(&holiday)
 	if err != nil {
-		panic(err)
-	}
-
-	// Start a transaction
-	tx := db.DB.Begin()
-
-	res := tx.Where("staff_id", holiday.StaffId).First(&time)
-	if res.Error != nil {
-		// Handle error, e.g., log it and return
-		log.Printf("Error finding booking: %v", res.Error)
-		tx.Rollback()
+		http.Error(w, "Bad request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	res = tx.Create(&holiday)
-	if res.Error != nil {
-		log.Printf("Error creating holiday: %v", res.Error)
-		tx.Rollback()
+	result := db.DB.Create(&holiday)
+	if result.Error != nil {
+		http.Error(w, "Failed to create record: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	tx.Commit()
-
 	return
 }
 

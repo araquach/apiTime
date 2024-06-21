@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/araquach/apiAuth v0.0.1
 	github.com/araquach/dbService v0.0.1
+	github.com/araquach/apiTeam v0.0.1
 	github.com/jinzhu/now v1.1.5
 	gorm.io/datatypes v1.2.0
 )
@@ -31,4 +32,5 @@ require (
 replace (
 	github.com/araquach/apiAuth => ../apiAuth
 	github.com/araquach/dbService => ../dbService
+	github.com/araquach/apiTeam => ../apiTeam
 )

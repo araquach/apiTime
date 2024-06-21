@@ -7,13 +7,17 @@ func TimeRouter() *mux.Router {
 
 	// Main routes
 	time(r)
-	freeTime(r)
 	holiday(r)
 	lieu(r)
+	freeTime(r)
 	sick(r)
 
 	//Admin routes
+	timeAdmin(r)
 	holidayAdmin(r)
+	lieuAdmin(r)
+	freeTimeAdmin(r)
+	sickAdmin(r)
 
 	return r
 }

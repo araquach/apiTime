@@ -13,3 +13,11 @@ func freeTime(r *mux.Router) {
 	s.HandleFunc("/create", handlers.ApiFreeTimeCreate).Methods("POST")
 	s.HandleFunc("/update/{id}", handlers.ApiFreeTimeUpdate).Methods("PUT")
 }
+
+func freeTimeAdmin(r *mux.Router) {
+	s := r.PathPrefix("/api/time/admin/free-time").Subrouter()
+	s.HandleFunc("/dash", handlers.ApiFreeTimeAdminDash).Methods("GET")
+	s.HandleFunc("/all/pending", handlers.ApiAdminFreeTimePending).Methods("GET")
+	s.HandleFunc("/all/{staff_id}", handlers.ApiAdminFreeTimeHours).Methods("GET")
+	s.HandleFunc("/approve/{id}", handlers.ApiFreeTimeApprove).Methods("PUT")
+}

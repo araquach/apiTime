@@ -7,8 +7,8 @@ import (
 
 func holiday(r *mux.Router) {
 	s := r.PathPrefix("/api/time/holiday").Subrouter()
-	s.HandleFunc("/dash/{staff_id}", handlers.ApiHolidayDash).Methods("GET")
-	s.HandleFunc("/all/{staff_id}", handlers.ApiHolidays).Methods("GET")
+	s.HandleFunc("/dash/{staff_id}/{year}", handlers.ApiHolidayDash).Methods("GET")
+	s.HandleFunc("/all/{staff_id}/{year}", handlers.ApiHolidays).Methods("GET")
 	s.HandleFunc("/{id}", handlers.ApiHoliday).Methods("GET")
 	s.HandleFunc("/create", handlers.ApiHolidayCreate).Methods("POST")
 	s.HandleFunc("/update/{id}", handlers.ApiHolidayUpdate).Methods("PUT")

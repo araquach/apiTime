@@ -8,7 +8,7 @@ import (
 func freeTime(r *mux.Router) {
 	s := r.PathPrefix("/api/time/free-time").Subrouter()
 	s.HandleFunc("/dash/{staff_id}", handlers.ApiFreeTimeDash).Methods("GET")
-	s.HandleFunc("/all/{staff_id}", handlers.ApiFreeTimes).Methods("GET")
+	s.HandleFunc("/all/{staff_id}/{year}", handlers.ApiFreeTimes).Methods("GET")
 	s.HandleFunc("/{id}", handlers.ApiFreeTime).Methods("GET")
 	s.HandleFunc("/create", handlers.ApiFreeTimeCreate).Methods("POST")
 	s.HandleFunc("/update/{id}", handlers.ApiFreeTimeUpdate).Methods("PUT")

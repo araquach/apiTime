@@ -25,6 +25,35 @@ func ApiSickAdminDash(w http.ResponseWriter, r *http.Request) {
 	w.Write(json)
 }
 
+func ApiAdminSickHours(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	id := vars["staff_id"]
+
+	type Result struct {
+		models.Sick
+		FirstName string `json:"first_name"`
+		LastName  string `json:"last_name"`
+	}
+
+	startDate := now.BeginningOfYear()
+	endDate := now.EndOfYear()
+
+	var results []Result
+
+	db.DB.Table("sicks").Where("sicks.staff_id", id).Select("sicks.*, team_members.first_name, team_members.last_name").
+		Joins("left join team_members on team_members.staff_id = sicks.staff_id").
+		Where("sicks.date_from > ? AND sicks.date_from < ?", startDate, endDate).
+		Scan(&results)
+
+	json, err := json.Marshal(results)
+	if err != nil {
+		log.Println(err)
+	}
+	w.Write(json)
+}
+
 func ApiAdminSickPending(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

@@ -11,6 +11,7 @@ type Time struct {
 	HolidayEnt  float32        `json:"holiday_ent"`
 	SaturdayEnt float32        `json:"saturday_ent"`
 	FreeTimeEnt float32        `json:"free_time_ent"`
+	HoursInDay  float32        `json:"hours_in_day" gorm:"type:decimal(4,1);not null"`
 	Schedule    datatypes.JSON `json:"schedule"`
 }
 

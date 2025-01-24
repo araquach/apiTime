@@ -2,29 +2,58 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/araquach/apiTime/models"
 	db "github.com/araquach/dbService"
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/now"
 	"log"
 	"net/http"
+	"time"
 )
 
 func ApiSickDays(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	param := vars["staff_id"]
+	staffID := vars["staff_id"]
+	year := vars["year"]
 
-	startDate := now.BeginningOfYear()
-	endDate := now.EndOfYear()
+	// Validate inputs
+	if staffID == "" || year == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+		return
+	}
+
+	// Construct start and end of the year
+	layout := "2006-01-02"
+	startDate := fmt.Sprintf("%s-01-01", year)
+	endDate := fmt.Sprintf("%s-12-31", year)
+
+	// Attempt to parse dates to validate
+	_, errStart := time.Parse(layout, startDate)
+	_, errEnd := time.Parse(layout, endDate)
+	if errStart != nil || errEnd != nil {
+		http.Error(w, "Invalid year format", http.StatusBadRequest)
+		return
+	}
 
 	var sickDays []models.Sick
-	db.DB.Where("staff_id", param).Where("date_from > ? AND date_from < ?", startDate, endDate).Find(&sickDays)
-
-	json, err := json.Marshal(sickDays)
-	if err != nil {
-		log.Println(err)
+	if err := db.DB.Where("staff_id = ? AND date_from >= ? AND date_from <= ?", staffID, startDate, endDate).
+		Find(&sickDays).Error; err != nil {
+		log.Println("Database error:", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
 	}
-	w.Write(json)
+
+	// Marshal results to JSON
+	jsonResponse, err := json.Marshal(sickDays)
+	if err != nil {
+		log.Println("JSON Marshalling error:", err)
+		http.Error(w, "Failed to process the request", http.StatusInternalServerError)
+		return
+	}
+
+	// Write the JSON response
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(jsonResponse)
 }
 
 func ApiSickDay(w http.ResponseWriter, r *http.Request) {

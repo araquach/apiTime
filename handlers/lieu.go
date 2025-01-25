@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/araquach/apiTime/models"
 	db "github.com/araquach/dbService"
 	"github.com/gorilla/mux"
@@ -14,31 +13,23 @@ import (
 func ApiLieuHours(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	// Extract staff ID from the route variables
 	vars := mux.Vars(r)
 	staffID := vars["staff_id"]
-	year := vars["year"]
 
-	// Validate inputs
-	if staffID == "" || year == "" {
-		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+	// Validate input
+	if staffID == "" {
+		http.Error(w, "Missing required parameter: staff_id", http.StatusBadRequest)
 		return
 	}
 
-	// Construct start and end of the year
-	layout := "2006-01-02"
-	startDate := fmt.Sprintf("%s-01-01", year)
-	endDate := fmt.Sprintf("%s-12-31", year)
+	// Calculate rolling 6-month date range
+	now := time.Now()
+	startDate := now.AddDate(0, -6, 0) // 6 months back
 
-	// Attempt to parse dates to validate
-	_, errStart := time.Parse(layout, startDate)
-	_, errEnd := time.Parse(layout, endDate)
-	if errStart != nil || errEnd != nil {
-		http.Error(w, "Invalid year format", http.StatusBadRequest)
-		return
-	}
-
+	// Fetch lieu hours within the rolling 6-month period
 	var lieuHours []models.Lieu
-	if err := db.DB.Where("staff_id = ? AND request_date >= ? AND request_date <= ?", staffID, startDate, endDate).
+	if err := db.DB.Where("staff_id = ? AND request_date BETWEEN ? AND ?", staffID, startDate, now).
 		Find(&lieuHours).Error; err != nil {
 		log.Println("Database error:", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)

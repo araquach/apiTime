@@ -6,13 +6,23 @@ import (
 )
 
 type Time struct {
-	ID          uint           `json:"id" gorm:"primaryKey"`
-	StaffId     int            `json:"staff_id"`
-	HolidayEnt  float32        `json:"holiday_ent"`
-	SaturdayEnt float32        `json:"saturday_ent"`
-	FreeTimeEnt float32        `json:"free_time_ent"`
-	HoursInDay  float32        `json:"hours_in_day" gorm:"type:decimal(4,1);not null"`
-	Schedule    datatypes.JSON `json:"schedule"`
+	ID          uint       `json:"id" gorm:"primaryKey"`
+	StaffId     int        `json:"staff_id"`
+	HolidayEnt  float32    `json:"holiday_ent"`
+	SaturdayEnt float32    `json:"saturday_ent"`
+	FreeTimeEnt float32    `json:"free_time_ent"`
+	HoursInDay  float32    `json:"hours_in_day" gorm:"type:decimal(4,1);not null"`
+	Schedules   []Schedule `json:"schedules" gorm:"foreignKey:TimeID;constraint:OnDelete:CASCADE;"`
+}
+
+type Schedule struct {
+	ID           uint           `json:"id" gorm:"primaryKey"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DateFrom     time.Time      `json:"date_from"`
+	StaffId      int            `json:"staff_id"`
+	TimeID       uint           `json:"time_id"`
+	WorkingHours datatypes.JSON `json:"working_hours" gorm:"type:json"`
 }
 
 type TimeDash struct {

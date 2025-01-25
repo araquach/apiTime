@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/araquach/apiTime/models"
 	db "github.com/araquach/dbService"
 	"github.com/gorilla/mux"
@@ -12,31 +11,23 @@ import (
 )
 
 func ApiSickDays(w http.ResponseWriter, r *http.Request) {
+	// Extract staff ID from the route variables
 	vars := mux.Vars(r)
 	staffID := vars["staff_id"]
-	year := vars["year"]
 
-	// Validate inputs
-	if staffID == "" || year == "" {
-		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+	// Validate input
+	if staffID == "" {
+		http.Error(w, "Missing required parameter: staff_id", http.StatusBadRequest)
 		return
 	}
 
-	// Construct start and end of the year
-	layout := "2006-01-02"
-	startDate := fmt.Sprintf("%s-01-01", year)
-	endDate := fmt.Sprintf("%s-12-31", year)
+	// Calculate rolling 12-month date range
+	now := time.Now()
+	startDate := now.AddDate(-1, 0, 0) // 12 months back
 
-	// Attempt to parse dates to validate
-	_, errStart := time.Parse(layout, startDate)
-	_, errEnd := time.Parse(layout, endDate)
-	if errStart != nil || errEnd != nil {
-		http.Error(w, "Invalid year format", http.StatusBadRequest)
-		return
-	}
-
+	// Fetch sick days within the rolling 12-month period
 	var sickDays []models.Sick
-	if err := db.DB.Where("staff_id = ? AND date_from >= ? AND date_from <= ?", staffID, startDate, endDate).
+	if err := db.DB.Where("staff_id = ? AND date_from BETWEEN ? AND ?", staffID, startDate, now).
 		Find(&sickDays).Error; err != nil {
 		log.Println("Database error:", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -52,6 +43,7 @@ func ApiSickDays(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Write the JSON response
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(jsonResponse)
 }
@@ -80,27 +72,46 @@ func ApiSickDay(w http.ResponseWriter, r *http.Request) {
 }
 
 func ApiSickDash(w http.ResponseWriter, r *http.Request) {
+	// Extract staff ID from the route variables
 	vars := mux.Vars(r)
 	id := vars["staff_id"]
 
+	// Get the current date and calculate the start date (12 months back)
+	now := time.Now()
+	startDate := now.AddDate(-1, 0, 0) // 12 months back
+
+	// Define the SQL query, filtering by the rolling 12-month range
+	const sql = `SELECT
+		SUM(CASE WHEN sicks.deducted = 1 THEN sicks.hours ELSE 0 END) AS sick_days,
+		SUM(CASE WHEN sicks.deducted = 0 THEN sicks.hours ELSE 0 END) AS pending,
+		COUNT(*) AS instances
+	FROM
+		sicks
+	WHERE
+		sicks.staff_id = ? AND
+		sicks.date_from BETWEEN ? AND ?
+	GROUP BY
+		sicks.staff_id`
+
+	// Prepare to store the query result
 	var sickDash models.SickDash
 
-	const sql = `SELECT
-    SUM(CASE WHEN sicks.deducted = 1 THEN sicks.hours ELSE 0 END) AS "sick_days",
-    SUM(CASE WHEN sicks.deducted = 0 THEN sicks.hours ELSE 0 END) AS "pending",
-	COUNT(*) AS "instances"
-FROM
-    sicks
-WHERE
-    sicks.staff_id = ?
-GROUP BY
-   sicks.staff_id`
-
-	db.DB.Raw(sql, id).Scan(&sickDash)
-
-	json, err := json.Marshal(sickDash)
-	if err != nil {
-		log.Println(err)
+	// Execute the query, substituting the staff ID and date range
+	if err := db.DB.Raw(sql, id, startDate, now).Scan(&sickDash).Error; err != nil {
+		log.Println("Error executing query:", err)
+		http.Error(w, "Unable to fetch data", http.StatusInternalServerError)
+		return
 	}
-	w.Write(json)
+
+	// Marshal the result into JSON
+	jsonData, err := json.Marshal(sickDash)
+	if err != nil {
+		log.Println("Error marshalling JSON:", err)
+		http.Error(w, "Error processing data", http.StatusInternalServerError)
+		return
+	}
+
+	// Set headers and write the JSON response
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData)
 }
